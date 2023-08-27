@@ -1,0 +1,13 @@
+#  THIS IS A TEMPLATE FOR PYTHON format_map() 
+
+FROM {docker_image_origin}
+
+WORKDIR /minecraft
+
+RUN curl -o server.jar {java_executable_url}
+
+COPY entrypoint.sh /minecraft/entrypoint.sh
+
+RUN chmod +x /minecraft/entrypoint.sh
+
+ENTRYPOINT [ "/minecraft/entrypoint.sh" ]
