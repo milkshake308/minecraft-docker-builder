@@ -1,65 +1,86 @@
-from src.mc_instance import MinecraftVanillaDockerBuilder
-from src.mc_instance import MinecraftForgeDockerBuilder
-from src.mc_manifest import GameManifest
+from src.VersionParser import MinecraftVersion
+from src.GameManifest import GameManifest, ForgeGameManifest
+from src.BuilderWrapper import build_vanilla_image, build_forge_image
 import json
-import os
-
-current_directory = os.path.abspath(os.path.dirname(__file__))
-
-
-DOCKER_IMAGE_ORIGIN = 'ghcr.io/graalvm/jdk-community:20.0.1-ol9'
-DOCKER_TEMPLATE_PATH = os.path.join(current_directory, 'docker-templates')
-DOCKER_BUILD_PATH = os.path.join(current_directory, 'build')
-
-def cache_game_manifest():
-    global mc 
-    mc = GameManifest()
-
-def build_vanilla_image(game_instance : dict, overwrite=False):
-
-    builder = MinecraftVanillaDockerBuilder(
-        base_docker_image = DOCKER_IMAGE_ORIGIN,
-        image_name = "minecraft-vanilla-server",
-        image_tag = game_instance['id'],
-        docker_templates_path = DOCKER_TEMPLATE_PATH,
-        docker_build_path = DOCKER_BUILD_PATH,
-        java_executable_url = game_instance['server_download_url']
-    )
-    builder.build_docker_image(overwrite)
-
-def build_handler(version, game_type, overwrite):
-    mc.filter_manifest('release')
-    mc.build_manifest()
     
+
+#  Handle version processing then passe the rest to build_handler()
+def context_handler(version, game_type, overwrite, dump_json=False):
+
+    mc = get_builded_manifest(game_type)
+
     if version == '':
         print('No target version provided \n Example : python build.py vanilla --target 1.12.2')
+
+    #  Build all possible versions
     elif version == 'all':
         for game_instance in mc.manifest:
-            if game_type == 'vanilla':
-                build_vanilla_image(game_instance, overwrite)
-        
+            build_handler(
+                game_type = game_type,
+                game_instance = game_instance, 
+                overwrite = overwrite,
+                dump_manifest = mc.manifest if dump_json else None ## Build 
+                )
+
+    #  Build versions list
     elif ',' in version:
         versions = version.split(",")
+
         #  first loop to check that input is correct
         for ver in versions:
             mc.get_game_instance_by_version(ver)
+
         for ver in versions:
             game_instance = mc.get_game_instance_by_version(ver)
-            if game_type == 'vanilla':
-                build_vanilla_image(game_instance, overwrite)
+            
+            build_handler(
+                game_type = game_type,
+                game_instance = game_instance, 
+                overwrite = overwrite,
+                dump_manifest = mc.manifest if dump_json else None
+                )
 
+    # Build version specific      
     else:
         game_instance = mc.get_game_instance_by_version(version)
-        if game_type == 'vanilla':
-            build_vanilla_image(game_instance, overwrite)
+        build_handler(
+                game_type = game_type,
+                game_instance = game_instance, 
+                overwrite = overwrite,
+                dump_manifest = mc.manifest if dump_json else None
+                )
 
-def pretty_list_version(type):
-    if type :
-        mc.filter_manifest(type)
 
-    if type == 'snapshot' or not type:
-        print('Snapshots versions will be shown even if they cant be builded from this tool.')
+#  Handle image building and jsons dumpings
+def build_handler(game_type, game_instance, overwrite, dump_manifest=None):
+    if dump_manifest:
+            print(json.dumps(dump_manifest, indent=4), json.dumps(game_instance, indent=4), sep='\n\n')
+            return None
+    
+    if game_type == 'vanilla':
+        build_vanilla_image(game_instance, overwrite)
+    elif game_type == 'forge':
+        build_forge_image(game_instance, overwrite)
+
+
+def get_builded_manifest(game_type):
+    if game_type == 'vanilla':
+        mc = GameManifest()
+       
+    elif game_type == 'forge':
+        mc = ForgeGameManifest()
+    mc.save_raw_manifest(mc.filter_manifest(
+       raw_manifest = mc.raw_manifest, 
+       type_filter = {'type': 'release'}
+       ))
     mc.build_manifest()
+    return mc
+
+
+def pretty_list_version(game_type):
+
+    mc = get_builded_manifest(game_type)
+
     manifest = mc.manifest
     
     print('Available Minecraft Version for build (in order of release): ')
@@ -70,5 +91,3 @@ def pretty_list_version(type):
         except KeyError:
             print('Error while parsing')
             print(json.dumps(version, indent=4))
-
-cache_game_manifest()

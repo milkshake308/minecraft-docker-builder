@@ -1,0 +1,24 @@
+#  THIS IS A TEMPLATE FOR PYTHON format_map() 
+
+FROM {docker_image_origin}
+
+LABEL maintainer="{maintainer_label}"
+
+WORKDIR /minecraft
+
+RUN curl -o installer.jar {java_executable_url}
+
+RUN java -jar installer.jar --installServer
+
+RUN rm installer.jar installer.jar.log
+
+RUN echo    "enable-rcon=true" \
+            "rcon.password={rcon_password}" > server.properties
+
+COPY {entrypoint_file} /entrypoint.sh
+
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 25565
+
+ENTRYPOINT [ "/entrypoint.sh" ]
