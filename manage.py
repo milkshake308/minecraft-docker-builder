@@ -36,10 +36,7 @@ if args.command == 'build':
     if args.dump:
         dump_json = True
     context_handler(args.version, args.target, overwrite, dump_json)
-    
-    
 elif args.command == 'list':
-    if args.target:
-        target_instance = args.target
-
     pretty_list_version(args.target)
+else:
+    parser.print_usage()

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ $# -lt 2 ]; then
+if [ $# -lt 1 ]; then
     echo "USAGE: $0 <repository> [--purge]"
     exit 1
 fi
@@ -13,15 +13,15 @@ if [ $# -eq 2 ] && [ "$2" = "--purge" ]; then
 fi
 
 # List all tags of the source repository
-TAGS=$(docker image ls --format "{{.Tag}}" "$SOURCE_REPO")
+TAGS=$(docker image ls | grep $SOURCE_REPO | awk '{print $1":"$2}' )
 
 for TAG in $TAGS; do
-
+    echo "Pushing $TAG"
     # Push the newly tagged image
-    docker push "$SOURCE_REPO:$TAG"
+    docker push $TAG
 
     # Optionally, remove the old image
     if [ "$REMOVE_OLD" = true ]; then
-        docker image rm "$SOURCE_REPO:$TAG"
+        docker image rm $TAG
     fi
 done
