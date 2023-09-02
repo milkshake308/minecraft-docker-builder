@@ -1,0 +1,27 @@
+#!/bin/bash
+
+if [ $# -lt 2 ]; then
+    echo "USAGE: $0 <source_repo> <new_repo> [--remove]"
+    exit 1
+fi
+
+SOURCE_REPO="$1"
+NEW_REPO="$2"
+REMOVE_OLD=false
+
+if [ $# -eq 3 ] && [ "$3" = "--remove" ]; then
+    REMOVE_OLD=true
+fi
+
+# List all tags of the source repository
+TAGS=$(docker image ls --format "{{.Tag}}" "$SOURCE_REPO")
+
+for TAG in $TAGS; do
+    # Tag the image with the new repository name
+    docker tag "$SOURCE_REPO:$TAG" "$NEW_REPO:$TAG"
+
+    # Optionally, remove the old image
+    if [ "$REMOVE_OLD" = true ]; then
+        docker image rm "$SOURCE_REPO:$TAG"
+    fi
+done
