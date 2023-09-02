@@ -13,4 +13,5 @@ if [ -z "${JAVA_ARGS}" ]; then
     export JAVA_ARGS=$jvm_args
 fi
 cd /minecraft
-java $JAVA_ARGS -jar server.jar nogui
+forge_executable=$(ls *forge*.jar)
+java $JAVA_ARGS -jar $forge_executable nogui
